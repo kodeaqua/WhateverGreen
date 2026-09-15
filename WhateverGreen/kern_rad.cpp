@@ -837,7 +837,7 @@ void RAD::reprioritiseConnectors(const uint8_t *senseList, uint8_t senseNum, RAD
 	uint16_t priCount = 1;
 	// Automatically detected connectors have equal priority (0), which often results in black screen
 	// This allows to change this firstly by user-defined list, then by type list.
-	//TODO: priority is ignored for 5xxx and 6xxx GPUs, should we manually reorder items?
+	// Note: updateConnectorsInfo calls this unconditionally for both legacy (5xxx/6xxx) and modern GPUs.
 	// Note: loop bound can exceed 255 when senseNum is large, so the counter must not be uint8_t (it would wrap and never terminate).
 	for (unsigned i = 0; i < static_cast<unsigned>(senseNum) + typeNum + 1; i++) {
 		for (uint8_t j = 0; j < sz; j++) {
@@ -1138,7 +1138,7 @@ uint32_t RAD::wrapTranslateAtomConnectorInfoV1(void *that, RADConnectors::AtomCo
 		RADConnectors::print(connector, 1);
 
 		uint8_t sense = getSenseID(info->i2cRecord);
-		if (sense) {
+		if (sense && info->hpdRecord) {
 			DBGLOG("rad", "translateAtomConnectorInfoV1 got sense id %02X", sense);
 
 			// We need to extract usGraphicObjIds from info->hpdRecord, which is of type ATOM_SRC_DST_TABLE_FOR_ONE_OBJECT:

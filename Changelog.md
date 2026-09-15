@@ -1,5 +1,8 @@
  WhateverGreen Changelog
 =======================
+#### v1.7.5
+- Fixed a potential null-pointer dereference in `RAD::wrapTranslateAtomConnectorInfoV1`: `info->hpdRecord` was read without a null check right next to the `ucNumberOfSrc` clamp added in v1.7.2, which could panic on a connector whose VBIOS record has an `i2cRecord` but no `hpdRecord`
+
 #### v1.7.4
 - Raised the minimum required Lilu version to 1.7.2, which fixed AMDSupport lockups and panics on macOS 26 (Tahoe) at the `routeMultipleLong`/trampoline level; older Lilu versions would still panic on Tahoe with an AMD GPU present regardless of WhateverGreen's own version, since the root cause lived in Lilu, not here
 - Reordered `RAD::wrapGetProperty`'s checks so the cheap key-prefix filter runs before the virtual `OSDynamicCast`; this hook is routed onto `IORegistryEntry::getProperty` kernel-wide once an AMD GPU is present, so it runs for every property read on the whole system for the rest of the boot
