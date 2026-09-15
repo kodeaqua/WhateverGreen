@@ -11,6 +11,7 @@
 #include <Headers/kern_cpu.hpp>
 #include "kern_weg.hpp"
 
+#include <IOKit/acpi/IOACPIPlatformDevice.h>
 #include <IOKit/graphics/IOFramebuffer.h>
 
 // This is a hack to let us access protected properties.
@@ -393,6 +394,85 @@ void WEG::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t ad
 		return;
 }
 
+uint32_t WEG::processPnlfUID(uint32_t deviceid) {
+	// Mirrors the profile selection in AppleIntelPanel / SSDT-PNLF.dsl, so that WhateverGreen can push
+	// the correct PNLF _UID via ACPI instead of requiring a hand-authored SSDT per platform.
+	switch (deviceid) {
+		// Arrandale
+		case 0x0046: case 0x0042:
+		// Sandy Bridge HD3000/HD2000
+		case 0x0102: case 0x0106: case 0x010a: case 0x0112: case 0x0116:
+		case 0x0122: case 0x0126: case 0x1106: case 0x1601:
+		// Ivy Bridge
+		case 0x0152: case 0x0156: case 0x0162: case 0x0166: case 0x016a:
+			return 14;
+
+		// Haswell
+		case 0x0412: case 0x0416: case 0x041a: case 0x041e: case 0x0a16:
+		case 0x0a1e: case 0x0a26: case 0x0a2e: case 0x0d22: case 0x0d26:
+		// Broadwell
+		case 0x0bd1: case 0x0bd2: case 0x0bd3: case 0x1606: case 0x160e:
+		case 0x1612: case 0x1616: case 0x161e: case 0x1622: case 0x1626:
+		case 0x162b:
+			return 15;
+
+		// CoffeeLake, Whiskey Lake, Comet Lake and Ice Lake
+		case 0x3e91: case 0x3e92: case 0x3e98: case 0x3e9b: case 0x3ea0:
+		case 0x3ea5: case 0x3ea6: case 0x8a51: case 0x8a52: case 0x8a53:
+		case 0x8a56: case 0x8a5a: case 0x8a5b: case 0x8a5c: case 0x8a5d:
+		case 0x8a70: case 0x8a71: case 0x9b21: case 0x9b41: case 0x9ba4:
+		case 0x9bc4: case 0x9bc5: case 0x9bc8: case 0x9bca: case 0xff05:
+			return 19;
+
+		// Assume Skylake/KabyLake/KabyLake-R otherwise (most common generation).
+		default:
+			return 16;
+	}
+}
+
+void WEG::processPnlfUIDOverride(IOService *obj, uint32_t deviceid) {
+	auto adev = OSDynamicCast(IOACPIPlatformDevice, obj->getProperty("acpi-device"));
+	if (!adev) {
+		DBGLOG("weg", "IGPU has no acpi-device, skipping PNLF _UID override");
+		return;
+	}
+
+	if (adev->validateObject("SUID") != kIOReturnSuccess) {
+		DBGLOG("weg", "PNLF does not support _UID set");
+		return;
+	}
+
+	uint32_t target = processPnlfUID(deviceid);
+	auto number = OSNumber::withNumber(target, 32);
+	if (!number) {
+		SYSLOG("weg", "failed to allocate PNLF _UID argument");
+		return;
+	}
+
+	OSObject *params[] = { number };
+	OSObject *result = nullptr;
+	if (adev->evaluateObject("SUID", &result, params, 1) == kIOReturnSuccess) {
+		DBGLOG("weg", "set PNLF _UID to 0x%x", target);
+
+		// SUID returns the (possibly renamed) PNLF device name so we can refresh the ioreg
+		// _UID property to match, in case userspace reads it before ACPI is re-evaluated.
+		auto path = OSDynamicCast(OSString, result);
+		auto child = adev->childFromPath(path ? path->getCStringNoCopy() : "PNLF", gIOACPIPlane);
+		if (auto pnlf = OSDynamicCast(IOACPIPlatformDevice, child)) {
+			OSObject *uid = nullptr;
+			if (pnlf->evaluateObject("_UID", &uid) == kIOReturnSuccess)
+				pnlf->setProperty("_UID", uid);
+			OSSafeReleaseNULL(uid);
+		}
+		OSSafeReleaseNULL(child);
+	} else {
+		SYSLOG("weg", "set PNLF _UID failed");
+	}
+
+	OSSafeReleaseNULL(result);
+	number->release();
+}
+
 void WEG::processBuiltinProperties(IORegistryEntry *device, DeviceInfo *info) {
 	auto name = device->getName();
 
@@ -442,6 +522,8 @@ void WEG::processBuiltinProperties(IORegistryEntry *device, DeviceInfo *info) {
 				DBGLOG("weg", "hooked configRead read methods!");
 			}
 		}
+
+		processPnlfUIDOverride(obj, fakeDevice ?: realDevice);
 	} else {
 		SYSLOG("weg", "invalid IGPU device type");
 	}
@@ -525,11 +607,11 @@ void WEG::processExternalProperties(IORegistryEntry *device, DeviceInfo *info, u
 				hasGfxSpoof = true;
 				KernelPatcher::routeVirtual(device, WIOKit::PCIConfigOffset::ConfigRead16, wrapConfigRead16, &orgConfigRead16);
 				KernelPatcher::routeVirtual(device, WIOKit::PCIConfigOffset::ConfigRead32, wrapConfigRead32, &orgConfigRead32);
+				DBGLOG("weg", "hooked configRead read methods!");
 			}
 		} else {
 			DBGLOG("weg", "missing AMD GPU device-id");
 		}
-		DBGLOG("weg", "hooked configRead read methods!");
 	}
 
 	// Ensure built-in.

@@ -282,6 +282,26 @@ private:
 	void processBuiltinProperties(IORegistryEntry *device, DeviceInfo *info);
 
 	/**
+	 *  Map an Intel IGPU device-id to the ACPI PNLF _UID value used to select
+	 *  the matching AppleIntelPanel backlight profile (see SSDT-PNLF.dsl).
+	 *
+	 *  @param deviceid  real or faked IGPU device-id
+	 *
+	 *  @return PNLF _UID value
+	 */
+	static uint32_t processPnlfUID(uint32_t deviceid);
+
+	/**
+	 *  Push the PNLF _UID value matching the IGPU device-id to ACPI via the
+	 *  SUID method, so AppleIntelPanel picks the right backlight profile
+	 *  without requiring a hand-authored SSDT for each device-id.
+	 *
+	 *  @param obj         IGPU IOService
+	 *  @param deviceid    real or faked IGPU device-id used to select the profile
+	 */
+	void processPnlfUIDOverride(IOService *obj, uint32_t deviceid);
+
+	/**
 	 *  Apply external GPU properties and renamings
 	 *
 	 *  @param device  GFX0 device
