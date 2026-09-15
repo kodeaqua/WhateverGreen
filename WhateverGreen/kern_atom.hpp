@@ -161,7 +161,10 @@ inline uint8_t getConnectorID(uint16_t objid) {
 inline uint8_t getSenseID(uint8_t *record) {
 	// Partially reversed from AtiAtomBiosDceInterface::parseSenseId
 	if (record) {
-		while (true) {
+		// Real record chains are far shorter and always end in a Max sentinel. Bound the walk in case
+		// a malformed or corrupted VBIOS table lacks a terminator, which would otherwise hang boot forever.
+		static constexpr unsigned MaxRecords = 32;
+		for (unsigned i = 0; i < MaxRecords; i++) {
 			auto h = reinterpret_cast<AtomCommonRecordHeader *>(record);
 			if (h->ucRecordType == AtomRecordType::I2C) {
 				if (record[2] > 0)
@@ -169,9 +172,13 @@ inline uint8_t getSenseID(uint8_t *record) {
 				return 0;
 			} else if (h->ucRecordType == AtomRecordType::Max) {
 				return 0;
+			} else if (h->ucRecordSize == 0) {
+				DBGLOG("rad", "getSenseID found zero-sized record, aborting walk");
+				return 0;
 			}
 			record += h->ucRecordSize;
 		}
+		DBGLOG("rad", "getSenseID exceeded %u records without finding a terminator, aborting walk", MaxRecords);
 	}
 
 	return 0;

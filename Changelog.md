@@ -1,5 +1,8 @@
  WhateverGreen Changelog
 =======================
+#### v1.7.2
+- Hardened AMD connector/VBIOS parsing against malformed or corrupted data: clamped a user-supplied connector-count override that could overflow the stock driver's fixed-size connectors buffer, null-checked ATOM object table lookups, widened a connector-priority loop counter that could wrap and spin forever, bounded `getSenseID`'s and the hotplug source-table walk's record-chain reads to stop them running unbounded on a corrupt VBIOS table, and fixed an out-of-bounds read in the global `setProperty` hook on short property keys
+
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts
 

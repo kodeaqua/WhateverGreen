@@ -83,6 +83,13 @@ private:
 	mach_vm_address_t orgLegacyGetConnectorsInfo {};
 
 	/**
+	 *  Upper bound for a user-supplied connector-count override.
+	 *  The connectors buffer we write into is allocated by the stock AMD driver at a fixed size,
+	 *  so an unchecked "connector-count" override could copy past its end.
+	 */
+	static constexpr uint32_t MaxConnectorsOverride = 8;
+
+	/**
 	 *  Get atom object table function type
 	 */
 	using t_getAtomObjectTableForType = void *(*)(void *that, AtomObjectTableType type, uint8_t *sz);

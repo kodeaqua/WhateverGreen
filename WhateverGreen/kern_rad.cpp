@@ -698,6 +698,10 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 
 			uint32_t consCount;
 			if (WIOKit::getOSDataValue(ctrl, "connector-count", consCount)) {
+				if (consCount > MaxConnectorsOverride) {
+					SYSLOG("rad", "getConnectorsInfo connector-count %u exceeds max %u, clamping", consCount, MaxConnectorsOverride);
+					consCount = MaxConnectorsOverride;
+				}
 				*sz = consCount;
 				DBGLOG("rad", "getConnectorsInfo got size override to %u", *sz);
 			}
@@ -716,13 +720,17 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 		if (atomutils) {
 			DBGLOG("rad", "getConnectorsInfo attempting to autofix connectors");
 			uint8_t sHeader = 0, displayPathNum = 0, connectorObjectNum = 0;
-			auto baseAddr = static_cast<uint8_t *>(gettable(atomutils, AtomObjectTableType::Common, &sHeader)) - sizeof(uint32_t);
+			auto commonTable = gettable(atomutils, AtomObjectTableType::Common, &sHeader);
 			auto displayPaths = static_cast<AtomDisplayObjectPath *>(gettable(atomutils, AtomObjectTableType::DisplayPath, &displayPathNum));
 			auto connectorObjects = static_cast<AtomConnectorObject *>(gettable(atomutils, AtomObjectTableType::ConnectorObject, &connectorObjectNum));
-			if (displayPathNum == connectorObjectNum)
+			if (!commonTable || !displayPaths || !connectorObjects) {
+				DBGLOG("rad", "getConnectorsInfo missing atom object table(s), skipping autofix");
+			} else if (displayPathNum == connectorObjectNum) {
+				auto baseAddr = static_cast<uint8_t *>(commonTable) - sizeof(uint32_t);
 				autocorrectConnectors(baseAddr, displayPaths, displayPathNum, connectorObjects, connectorObjectNum, connectors, *sz);
-			else
+			} else {
 				DBGLOG("rad", "getConnectorsInfo found different displaypaths %u and connectors %u", displayPathNum, connectorObjectNum);
+			}
 		}
 
 		applyPropertyFixes(ctrl, *sz);
@@ -830,7 +838,8 @@ void RAD::reprioritiseConnectors(const uint8_t *senseList, uint8_t senseNum, RAD
 	// Automatically detected connectors have equal priority (0), which often results in black screen
 	// This allows to change this firstly by user-defined list, then by type list.
 	//TODO: priority is ignored for 5xxx and 6xxx GPUs, should we manually reorder items?
-	for (uint8_t i = 0; i < senseNum + typeNum + 1; i++) {
+	// Note: loop bound can exceed 255 when senseNum is large, so the counter must not be uint8_t (it would wrap and never terminate).
+	for (unsigned i = 0; i < static_cast<unsigned>(senseNum) + typeNum + 1; i++) {
 		for (uint8_t j = 0; j < sz; j++) {
 			auto reorder = [&](auto &con) {
 				if (i == senseNum + typeNum) {
@@ -1025,7 +1034,7 @@ void RAD::updateAccelConfig(size_t hwIndex, IOService *accelService, const char 
 }
 
 bool RAD::wrapSetProperty(IORegistryEntry *that, const char *aKey, void *bytes, unsigned length) {
-	if (length > 10 && aKey && reinterpret_cast<const uint32_t *>(aKey)[0] == 'edom' && reinterpret_cast<const uint16_t *>(aKey)[2] == 'l') {
+	if (length > 10 && aKey && !strcmp(aKey, "model")) {
 		DBGLOG("rad", "SetProperty caught model %u (%.*s)", length, length, static_cast<char *>(bytes));
 		if (*static_cast<uint32_t *>(bytes) == ' DMA' || *static_cast<uint32_t *>(bytes) == ' ITA' || *static_cast<uint32_t *>(bytes) == 'edaR') {
 			if (FunctionCast(wrapGetProperty, callbackRAD->orgGetProperty)(that, aKey)) {
@@ -1136,6 +1145,14 @@ uint32_t RAD::wrapTranslateAtomConnectorInfoV1(void *that, RADConnectors::AtomCo
 			// The value we need is in usSrcObjectID. The structure is byte-packed.
 
 			uint8_t ucNumberOfSrc = info->hpdRecord[0];
+			// A hotplug source/dest table realistically lists a single source encoder object. Cap the walk in
+			// case a malformed/corrupted VBIOS record claims an implausibly large count, which would otherwise
+			// read arbitrarily far past the actual (much smaller) hpdRecord buffer.
+			static constexpr uint8_t MaxHpdRecordSources = 8;
+			if (ucNumberOfSrc > MaxHpdRecordSources) {
+				DBGLOG("rad", "translateAtomConnectorInfoV1 hpdRecord claims %u sources, clamping to %u", ucNumberOfSrc, MaxHpdRecordSources);
+				ucNumberOfSrc = MaxHpdRecordSources;
+			}
 			for (uint8_t i = 0; i < ucNumberOfSrc; i++) {
 				auto usSrcObjectID = *reinterpret_cast<uint16_t *>(info->hpdRecord + sizeof(uint8_t) + i * sizeof(uint16_t));
 				DBGLOG("rad", "translateAtomConnectorInfoV1 checking %04X object id", usSrcObjectID);
