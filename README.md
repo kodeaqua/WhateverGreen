@@ -3,7 +3,7 @@ WhateverGreen
 
 [![Build Status](https://github.com/acidanthera/WhateverGreen/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/acidanthera/WhateverGreen/actions) [![Scan Status](https://scan.coverity.com/projects/16177/badge.svg?flat=1)](https://scan.coverity.com/projects/16177)
 
-[Lilu](https://github.com/acidanthera/Lilu) plugin providing patches to select GPUs on macOS. Requires Lilu 1.5.6 or newer.
+[Lilu](https://github.com/acidanthera/Lilu) plugin providing patches to select GPUs on macOS. Requires Lilu 1.7.2 or newer (1.7.2 fixed AMDSupport lockups and panics on macOS 26 Tahoe; older Lilu versions will panic on boot with an AMD GPU present on Tahoe regardless of WhateverGreen version).
 
 #### Features
 

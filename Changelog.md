@@ -1,5 +1,9 @@
  WhateverGreen Changelog
 =======================
+#### v1.7.4
+- Raised the minimum required Lilu version to 1.7.2, which fixed AMDSupport lockups and panics on macOS 26 (Tahoe) at the `routeMultipleLong`/trampoline level; older Lilu versions would still panic on Tahoe with an AMD GPU present regardless of WhateverGreen's own version, since the root cause lived in Lilu, not here
+- Reordered `RAD::wrapGetProperty`'s checks so the cheap key-prefix filter runs before the virtual `OSDynamicCast`; this hook is routed onto `IORegistryEntry::getProperty` kernel-wide once an AMD GPU is present, so it runs for every property read on the whole system for the rest of the boot
+
 #### v1.7.3
 - Added PNLF `_UID` override support: WhateverGreen now pushes the correct PNLF `_UID` (matching its internal AppleIntelPanel backlight profile selection) via ACPI, so a simplified `SSDT-PNLF.dsl` (see Manual/) can be used instead of a hand-authored per-device SSDT
 

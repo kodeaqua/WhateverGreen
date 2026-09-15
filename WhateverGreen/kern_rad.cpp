@@ -1050,34 +1050,40 @@ bool RAD::wrapSetProperty(IORegistryEntry *that, const char *aKey, void *bytes, 
 
 OSObject *RAD::wrapGetProperty(IORegistryEntry *that, const char *aKey) {
 	auto obj = FunctionCast(wrapGetProperty, callbackRAD->orgGetProperty)(that, aKey);
-	auto props = OSDynamicCast(OSDictionary, obj);
 
-	if (props && aKey) {
-		const char *prefix {nullptr};
-		auto provider = OSDynamicCast(IOService, that->getParentEntry(gIOServicePlane));
-		if (provider) {
-			if (aKey[0] == 'a') {
-				if (!strcmp(aKey, "aty_config"))
-					prefix = "CFG,";
-				else if (!strcmp(aKey, "aty_properties"))
-					prefix = "PP,";
-			} else if (aKey[0] == 'c' && !strcmp(aKey, "cail_properties")) {
-				prefix = "CAIL,";
-			}
-
-			if (prefix) {
-				DBGLOG("rad", "GetProperty discovered property merge request for %s", aKey);
-				auto rawProps = props->copyCollection();
-				if (rawProps) {
-					auto newProps = OSDynamicCast(OSDictionary, rawProps);
-					if (newProps) {
-						callbackRAD->mergeProperties(newProps, prefix, provider);
-						that->setProperty(aKey, newProps);
-						obj = newProps;
-					}
-					rawProps->release();
+	// This hook is only installed once an AMD GPU is present, but once installed it is routed onto
+	// IORegistryEntry::getProperty kernel-wide, so it runs on every property read on the whole system
+	// for the rest of the boot. We only ever act on three specific dictionary-valued keys, so filter on
+	// the (cheap) first byte of aKey before paying for a virtual OSDynamicCast on objects we will not use.
+	if (aKey && (aKey[0] == 'a' || aKey[0] == 'c')) {
+		auto props = OSDynamicCast(OSDictionary, obj);
+		if (props) {
+			const char *prefix {nullptr};
+			auto provider = OSDynamicCast(IOService, that->getParentEntry(gIOServicePlane));
+			if (provider) {
+				if (aKey[0] == 'a') {
+					if (!strcmp(aKey, "aty_config"))
+						prefix = "CFG,";
+					else if (!strcmp(aKey, "aty_properties"))
+						prefix = "PP,";
+				} else if (!strcmp(aKey, "cail_properties")) {
+					prefix = "CAIL,";
 				}
 
+				if (prefix) {
+					DBGLOG("rad", "GetProperty discovered property merge request for %s", aKey);
+					auto rawProps = props->copyCollection();
+					if (rawProps) {
+						auto newProps = OSDynamicCast(OSDictionary, rawProps);
+						if (newProps) {
+							callbackRAD->mergeProperties(newProps, prefix, provider);
+							that->setProperty(aKey, newProps);
+							obj = newProps;
+						}
+						rawProps->release();
+					}
+
+				}
 			}
 		}
 	}
