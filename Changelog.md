@@ -1,5 +1,8 @@
  WhateverGreen Changelog
 =======================
+#### v1.7.6
+- Fixed an out-of-bounds read in `RAD::updateAccelConfig`: the `"model"` device property (user-overridable via `DeviceProperties`) was read 4 bytes deep to strip an `"AMD "`/`"ATI "` prefix without checking `OSData` length first
+
 #### v1.7.5
 - Fixed a potential null-pointer dereference in `RAD::wrapTranslateAtomConnectorInfoV1`: `info->hpdRecord` was read without a null check right next to the `ucNumberOfSrc` clamp added in v1.7.2, which could panic on a connector whose VBIOS record has an `i2cRecord` but no `hpdRecord`
 

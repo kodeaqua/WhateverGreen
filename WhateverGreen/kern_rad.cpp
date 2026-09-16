@@ -1008,7 +1008,9 @@ void RAD::updateAccelConfig(size_t hwIndex, IOService *accelService, const char 
 				if (model) {
 					auto modelStr = static_cast<const char *>(model->getBytesNoCopy());
 					if (modelStr) {
-						if (modelStr[0] == 'A' && ((modelStr[1] == 'M' && modelStr[2] == 'D') ||
+						// "model" may come from an untrusted user-supplied device property, so its length
+						// is not guaranteed to cover the 4-byte prefix we are about to compare against.
+						if (model->getLength() >= 4 && modelStr[0] == 'A' && ((modelStr[1] == 'M' && modelStr[2] == 'D') ||
 												   (modelStr[1] == 'T' && modelStr[2] == 'I')) && modelStr[3] == ' ') {
 							modelStr += 4;
 						}
