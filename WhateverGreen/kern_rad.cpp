@@ -1044,19 +1044,20 @@ OSObject *RAD::wrapGetProperty(IORegistryEntry *that, const char *aKey) {
 	auto props = OSDynamicCast(OSDictionary, obj);
 
 	if (props && aKey) {
+		// Check the key first, so that the registry is not queried for unrelated properties.
 		const char *prefix {nullptr};
-		auto provider = OSDynamicCast(IOService, that->getParentEntry(gIOServicePlane));
-		if (provider) {
-			if (aKey[0] == 'a') {
-				if (!strcmp(aKey, "aty_config"))
-					prefix = "CFG,";
-				else if (!strcmp(aKey, "aty_properties"))
-					prefix = "PP,";
-			} else if (aKey[0] == 'c' && !strcmp(aKey, "cail_properties")) {
-				prefix = "CAIL,";
-			}
+		if (aKey[0] == 'a') {
+			if (!strcmp(aKey, "aty_config"))
+				prefix = "CFG,";
+			else if (!strcmp(aKey, "aty_properties"))
+				prefix = "PP,";
+		} else if (aKey[0] == 'c' && !strcmp(aKey, "cail_properties")) {
+			prefix = "CAIL,";
+		}
 
-			if (prefix) {
+		if (prefix) {
+			auto provider = OSDynamicCast(IOService, that->getParentEntry(gIOServicePlane));
+			if (provider) {
 				DBGLOG("rad", "GetProperty discovered property merge request for %s", aKey);
 				auto rawProps = props->copyCollection();
 				if (rawProps) {
@@ -1068,7 +1069,6 @@ OSObject *RAD::wrapGetProperty(IORegistryEntry *that, const char *aKey) {
 					}
 					rawProps->release();
 				}
-
 			}
 		}
 	}
