@@ -66,9 +66,13 @@ Read [FAQs](./Manual/) and avoid asking any questions. No support is provided fo
 | Boot argument 	| DeviceProperties 	| Description 	|
 |---	|---	|---	|
 | `-rad24` 			  | N/A 	| Enforce 24-bit display mode 	|
+| `-radcfg` 		| N/A 	| Report the real GPU model as the accelerator name (for WhateverName.app) 	|
 | `-radcodec` 		| N/A 	| Force the spoofed PID to be used in AMDRadeonVADriver 	|
 | `-raddvi` 		  | N/A 	| Enable DVI transmitter correction (required for 290X, 370, etc.) 	|
+| `-radgl` 		| N/A 	| Disable Metal support and force OpenGL (useful for testing) 	|
 | `-radvesa` 		  | N/A 	| Disable ATI/AMD video acceleration completely 	|
+| `radgva=1` 		  | `enable-gva-support` 	| Enable AppleGVA hardware video decoding and encoding properties on AMDRadeonX4000 GPUs (`radgva=0` overrides the property) 	|
+| N/A 		  | `no-gfx-spoof` 	| Do not spoof PCI config reads when the injected `device-id` differs from the real one 	|
 | `radpg=15` 		  | N/A 	| Disable several power-gating modes (see [FAQ Radeon](./Manual/FAQ.Radeon.en.md), required for Cape Verde GPUs: Radeon HD 7730/7750/7770/R7 250/R7 250X) 	|
 
 ##### Board-id
