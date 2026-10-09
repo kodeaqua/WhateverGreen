@@ -95,7 +95,7 @@ void UNFAIR::processKernel(KernelPatcher &patcher, DeviceInfo *info) {
 			entry->setProperty("hwgva-id", const_cast<char *>("Mac-7BA5B2D9E42DDD94"), static_cast<uint32_t>(sizeof("Mac-7BA5B2D9E42DDD94")));
 			entry->release();
 		} else {
-			SYSLOG("shiki", "failed to obtain iodt tree");
+			SYSLOG("unfair", "failed to obtain iodt tree");
 			unfairGva &= ~UnfairCustomAppleGvaBoardId;
 		}
 	}
