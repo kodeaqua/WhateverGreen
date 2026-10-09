@@ -175,11 +175,15 @@ void RAD::processKernel(KernelPatcher &patcher, DeviceInfo *info) {
 			KernelPatcher::RouteRequest("__ZNK15IORegistryEntry11getPropertyEPKc", wrapGetProperty, orgGetProperty),
 		};
 		
+		bool routed;
 		if (getKernelVersion() >= KernelVersion::Catalina) {
-			patcher.routeMultipleLong(KernelPatcher::KernelID, requests, arrsize(requests));
+			routed = patcher.routeMultipleLong(KernelPatcher::KernelID, requests, arrsize(requests));
 		} else {
-			patcher.routeMultiple(KernelPatcher::KernelID, requests);
+			routed = patcher.routeMultiple(KernelPatcher::KernelID, requests);
 		}
+
+		if (!routed)
+			SYSLOG("rad", "failed to route IORegistryEntry property accessors");
 
 		if (useCustomAgdpDecision && info->firmwareVendor == DeviceInfo::FirmwareVendor::Apple)
 			useCustomAgdpDecision = false;
