@@ -698,8 +698,12 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 
 			uint32_t consCount;
 			if (WIOKit::getOSDataValue(ctrl, "connector-count", consCount)) {
-				*sz = consCount;
-				DBGLOG("rad", "getConnectorsInfo got size override to %u", *sz);
+				if (consCount <= UINT8_MAX) {
+					*sz = static_cast<uint8_t>(consCount);
+					DBGLOG("rad", "getConnectorsInfo got size override to %u", *sz);
+				} else {
+					SYSLOG("rad", "getConnectorsInfo ignored too large connector-count %u", consCount);
+				}
 			}
 
 			if (consPtr && consSize > 0 && *sz > 0 && RADConnectors::valid(consSize, *sz)) {
@@ -716,10 +720,13 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 		if (atomutils) {
 			DBGLOG("rad", "getConnectorsInfo attempting to autofix connectors");
 			uint8_t sHeader = 0, displayPathNum = 0, connectorObjectNum = 0;
-			auto baseAddr = static_cast<uint8_t *>(gettable(atomutils, AtomObjectTableType::Common, &sHeader)) - sizeof(uint32_t);
+			auto commonTable = static_cast<uint8_t *>(gettable(atomutils, AtomObjectTableType::Common, &sHeader));
 			auto displayPaths = static_cast<AtomDisplayObjectPath *>(gettable(atomutils, AtomObjectTableType::DisplayPath, &displayPathNum));
 			auto connectorObjects = static_cast<AtomConnectorObject *>(gettable(atomutils, AtomObjectTableType::ConnectorObject, &connectorObjectNum));
-			if (displayPathNum == connectorObjectNum)
+			auto baseAddr = commonTable ? commonTable - sizeof(uint32_t) : nullptr;
+			if (!baseAddr || !displayPaths || !connectorObjects)
+				DBGLOG("rad", "getConnectorsInfo failed to obtain atom object tables");
+			else if (displayPathNum == connectorObjectNum)
 				autocorrectConnectors(baseAddr, displayPaths, displayPathNum, connectorObjects, connectorObjectNum, connectors, *sz);
 			else
 				DBGLOG("rad", "getConnectorsInfo found different displaypaths %u and connectors %u", displayPathNum, connectorObjectNum);
