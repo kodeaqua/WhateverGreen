@@ -556,7 +556,7 @@ void RAD::processHardwareKext(KernelPatcher &patcher, size_t hwIndex, mach_vm_ad
 
 		KernelPatcher::LookupPatch antimetal[] {
 			{&hardware, find1, repl1, sizeof(find1), 2},
-			{&hardware, find2, repl2, sizeof(find1), 2}
+			{&hardware, find2, repl2, sizeof(find2), 2}
 		};
 
 		for (auto &p : antimetal) {
@@ -998,8 +998,10 @@ void RAD::updateAccelConfig(size_t hwIndex, IOService *accelService, const char 
 				auto model = OSDynamicCast(OSData, gpuService->getProperty("model"));
 				if (model) {
 					auto modelStr = static_cast<const char *>(model->getBytesNoCopy());
-					if (modelStr) {
-						if (modelStr[0] == 'A' && ((modelStr[1] == 'M' && modelStr[2] == 'D') ||
+					auto modelLen = model->getLength();
+					// The model is used as a C string, so it must be NUL-terminated within the data.
+					if (modelStr && modelLen > 0 && modelStr[modelLen - 1] == '\0') {
+						if (modelLen > 4 && modelStr[0] == 'A' && ((modelStr[1] == 'M' && modelStr[2] == 'D') ||
 												   (modelStr[1] == 'T' && modelStr[2] == 'I')) && modelStr[3] == ' ') {
 							modelStr += 4;
 						}
@@ -1007,7 +1009,7 @@ void RAD::updateAccelConfig(size_t hwIndex, IOService *accelService, const char 
 						DBGLOG("rad", "updateAccelConfig found gpu model %s", modelStr);
 						*accelConfig = modelStr;
 					} else {
-						DBGLOG("rad", "updateAccelConfig found null gpu model");
+						DBGLOG("rad", "updateAccelConfig found null or unterminated gpu model");
 					}
 				} else {
 					DBGLOG("rad", "updateAccelConfig failed to find gpu model");
