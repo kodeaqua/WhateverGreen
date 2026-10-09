@@ -197,20 +197,20 @@ void RAD::processKernel(KernelPatcher &patcher, DeviceInfo *info) {
 void RAD::updatePwmMaxBrightnessFromInternalDisplay() {
 	OSDictionary * matching = IOService::serviceMatching("AppleBacklightDisplay");
 	if (matching == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null AppleBacklightDisplay");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null AppleBacklightDisplay");
 		return;
 	}
 	
 	OSIterator *iter = IOService::getMatchingServices(matching);
 	if (iter == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null matching");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null matching");
 		matching->release();
 		return;
 	}
 	
 	IORegistryEntry* display = OSDynamicCast(IORegistryEntry, iter->getNextObject());
 	if (display == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null display");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null display");
 		iter->release();
 		matching->release();
 		return;
@@ -218,7 +218,7 @@ void RAD::updatePwmMaxBrightnessFromInternalDisplay() {
 	
 	OSDictionary* iodispparm = OSDynamicCast(OSDictionary, display->getProperty("IODisplayParameters"));
 	if (iodispparm == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null IODisplayParameters");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null IODisplayParameters");
 		iter->release();
 		matching->release();
 		return;
@@ -226,7 +226,7 @@ void RAD::updatePwmMaxBrightnessFromInternalDisplay() {
 	
 	OSDictionary* linearbri = OSDynamicCast(OSDictionary, iodispparm->getObject("linear-brightness"));
 	if (linearbri == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null linear-brightness");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null linear-brightness");
 		iter->release();
 		matching->release();
 		return;
@@ -234,14 +234,14 @@ void RAD::updatePwmMaxBrightnessFromInternalDisplay() {
 	
 	OSNumber* maxbri = OSDynamicCast(OSNumber, linearbri->getObject("max"));
 	if (maxbri == nullptr) {
-		DBGLOG("igfx", "isRadeonX6000WiredToInternalDisplay null max");
+		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null max");
 		iter->release();
 		matching->release();
 		return;
 	}
 
 	callbackRAD->maxPwmBacklightLvl = maxbri->unsigned32BitValue();
-	DBGLOG("igfx", "updatePwmMaxBrightnessFromInternalDisplay get max brightness: 0x%x", callbackRAD->maxPwmBacklightLvl);
+	DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay get max brightness: 0x%x", callbackRAD->maxPwmBacklightLvl);
 
 	iter->release();
 	matching->release();
