@@ -1840,7 +1840,7 @@ bool IGFX::applyDPtoHDMIPatch(uint32_t framebufferId, FramebufferSNB *platformIn
 		if (sandyPlatformId[i] == framebufferId) {
 			for (size_t j = 0; j < arrsize(platformInformationList[i].connectors); j++) {
 				DBGLOG("igfx", "snb connector [%lu] busId: 0x%02X, pipe: %d, type: 0x%08X, flags: 0x%08X", j, platformInformationList[i].connectors[j].busId, platformInformationList[i].connectors[j].pipe,
-					   platformInformationList[i].connectors[j].type, platformInformationList[i].connectors[j].flags);
+					   platformInformationList[i].connectors[j].type, platformInformationList[i].connectors[j].flags.value);
 
 				if (platformInformationList[i].connectors[j].type == ConnectorDP) {
 					platformInformationList[i].connectors[j].type = ConnectorHDMI;
@@ -1862,8 +1862,8 @@ bool IGFX::applyDPtoHDMIPatch(uint32_t framebufferId, T *platformInformationList
 
 	bool found = false;
 	for (size_t i = 0; i < arrsize(frame->connectors); i++) {
-		DBGLOG("igfx", "connector [%lu] busId: 0x%02X, pipe: %d, type: 0x%08X, flags: 0x%08X", i, platformInformationList[i].connectors[i].busId, platformInformationList[i].connectors[i].pipe,
-			   platformInformationList[i].connectors[i].type, platformInformationList[i].connectors[i].flags);
+		DBGLOG("igfx", "connector [%lu] busId: 0x%02X, pipe: %d, type: 0x%08X, flags: 0x%08X", i, frame->connectors[i].busId, frame->connectors[i].pipe,
+			   frame->connectors[i].type, frame->connectors[i].flags.value);
 
 		if (frame->connectors[i].type == ConnectorDP) {
 			frame->connectors[i].type = ConnectorHDMI;
