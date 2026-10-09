@@ -924,12 +924,12 @@ IOReturn IGFX::MaxPixelClockOverride::wrapConnectionProbe(IOService *that, unsig
 
 	// Update the max pixel clock in the IODisplayTimingRange structure
 	auto fbTimingRange = OSDynamicCast(OSData, that->getProperty(kIOFBTimingRangeKey));
-	if (fbTimingRange) {
+	if (fbTimingRange && fbTimingRange->getLength() >= sizeof(IODisplayTimingRangeV1)) {
 		auto displayTimingRange = const_cast<IODisplayTimingRangeV1 *>(reinterpret_cast<const IODisplayTimingRangeV1 *>(fbTimingRange->getBytesNoCopy()));
 		DBGLOG("igfx", "MPC: Changing max pixel clock from %llu Hz to %llu Hz", displayTimingRange->maxPixelClock, callbackIGFX->modMaxPixelClockOverride.maxPixelClockFrequency);
 		displayTimingRange->maxPixelClock = callbackIGFX->modMaxPixelClockOverride.maxPixelClockFrequency;
 	} else {
-		SYSLOG("igfx", "MPC: Failed to read IOFBTimingRange property");
+		SYSLOG("igfx", "MPC: Failed to read a valid IOFBTimingRange property");
 	}
 
 	return retVal;
