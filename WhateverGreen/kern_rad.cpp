@@ -465,13 +465,15 @@ void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t ad
 											wrapTranslateAtomConnectorInfoV2, orgTranslateAtomConnectorInfoV2),
 				KernelPatcher::RouteRequest("__ZN13ATIController5startEP9IOService", wrapATIControllerStart, orgATIControllerStart)
 			};
-			patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size);
+			if (!patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size))
+				SYSLOG("rad", "failed to route connector override functions");
 		} else {
 			KernelPatcher::RouteRequest requests[] {
 				KernelPatcher::RouteRequest("__ZN23AtiAtomBiosDceInterface17getConnectorsInfoEP13ConnectorInfoRh", wrapGetConnectorsInfoV1, orgGetConnectorsInfoV1),
 				KernelPatcher::RouteRequest("__ZN13ATIController5startEP9IOService", wrapATIControllerStart, orgATIControllerStart),
 			};
-			patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size);
+			if (!patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size))
+				SYSLOG("rad", "failed to route connector override functions");
 
 			orgGetAtomObjectTableForType = reinterpret_cast<t_getAtomObjectTableForType>(patcher.solveSymbol(kextRadeonSupport.loadIndex,
 																											 "__ZN20AtiAtomBiosUtilities25getAtomObjectTableForTypeEhRh", address, size));
@@ -485,7 +487,8 @@ void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t ad
 			KernelPatcher::RouteRequest("__ZN23AtiAtomBiosDceInterface17getConnectorsInfoEP13ConnectorInfoRh", wrapLegacyGetConnectorsInfo, orgLegacyGetConnectorsInfo),
 			KernelPatcher::RouteRequest("__ZN19AMDLegacyController5startEP9IOService", wrapLegacyATIControllerStart, orgLegacyATIControllerStart),
 		};
-		patcher.routeMultiple(kextRadeonLegacySupport.loadIndex, requests, address, size);
+		if (!patcher.routeMultiple(kextRadeonLegacySupport.loadIndex, requests, address, size))
+			SYSLOG("rad", "failed to route legacy connector override functions");
 
 		orgLegacyGetAtomObjectTableForType = patcher.solveSymbol<t_getAtomObjectTableForType>(kextRadeonLegacySupport.loadIndex,
 																							  "__ZN20AtiAtomBiosUtilities25getAtomObjectTableForTypeEhRh", address, size);
