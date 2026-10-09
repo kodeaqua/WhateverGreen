@@ -185,7 +185,7 @@ int IGFX::RPSControlPatch::wrapPmNotifyWrapper(unsigned int a0, unsigned int a1,
 	
 	if (!callbackIGFX->modRPSControlPatch.freq_max) {
 		callbackIGFX->modRPSControlPatch.freq_max = callbackIGFX->readRegister32(callbackIGFX->defaultController(), GEN6_RP_STATE_CAP) & 0xFF;
-		DBGLOG("log", "Read RP0 %d", callbackIGFX->modRPSControlPatch.freq_max);
+		DBGLOG(log, "Read RP0 %d", callbackIGFX->modRPSControlPatch.freq_max);
 	}
 	
 	*freq = (GEN9_FREQ_SCALER << GEN9_FREQUENCY_SHIFT) * callbackIGFX->modRPSControlPatch.freq_max;
@@ -301,7 +301,7 @@ void IGFX::ForceWakeWorkaround::forceWake(void*, uint8_t set, uint32_t dom, uint
 		if (!pollRegister(ackForDom(d), ack_exp, mask, FORCEWAKE_ACK_TIMEOUT_MS) &&
 			!forceWakeWaitAckFallback(d, ack_exp, mask) &&
 			!pollRegister(ackForDom(d), ack_exp, mask, FORCEWAKE_ACK_TIMEOUT_MS))
-			PANIC(log, "ForceWake timeout for domain %s, expected 0x%x", strForDom(dom), ack_exp);
+			PANIC(log, "ForceWake timeout for domain %s, expected 0x%x", strForDom(d), ack_exp);
 	}
 }
 
