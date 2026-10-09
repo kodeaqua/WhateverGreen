@@ -1,16 +1,6 @@
  WhateverGreen Changelog
 =======================
-#### v1.7.2
-- Fixed an infinite loop in LSPCON mode switching when the adapter mode could not be read
-- Fixed out-of-bounds reads in Radeon accelerator config (`-radcfg`) and connector override handling
-- Fixed an out-of-bounds connector index and several format specifiers in Intel graphics logging
-- Fixed bounds check order when locating the GuC firmware size register
-- Added null argument checks to Radeon link change and codec info hooks
-- Improved `getProperty` hook performance by checking the property name before querying the registry
-- Replaced deprecated `routeFunction` for `IGHardwareGuC::loadGuCBinary`
-- Fixed ForceWake timeout panic message reporting the wrong domain
-- Fixed missing length validation of IOFBTimingRange in the max pixel clock override
-- Added logging when Radeon property accessor or connector override hooks fail to route
+#### v1.7.3
 - Fixed an infinite loop in Radeon connector prioritisation with a `connector-priority` of 250 or more entries
 - Fixed an infinite loop when parsing zero-sized atom records while detecting the connector sense id
 - Fixed unsafe key comparison in the Radeon `setProperty` hook
@@ -22,6 +12,18 @@
 - Fixed `AAPL,slot-name` missing its NUL terminator for the tenth external GPU slot
 - Fixed spoofing the codec PID from uninitialised hardware info when the original `getHWInfo` failed
 - Added logging when more Radeon hooks (TestVRAM, link change, project lookup, accelerator config, codec info) fail to route
+
+#### v1.7.2
+- Fixed an infinite loop in LSPCON mode switching when the adapter mode could not be read
+- Fixed out-of-bounds reads in Radeon accelerator config (`-radcfg`) and connector override handling
+- Fixed an out-of-bounds connector index and several format specifiers in Intel graphics logging
+- Fixed bounds check order when locating the GuC firmware size register
+- Added null argument checks to Radeon link change and codec info hooks
+- Improved `getProperty` hook performance by checking the property name before querying the registry
+- Replaced deprecated `routeFunction` for `IGHardwareGuC::loadGuCBinary`
+- Fixed ForceWake timeout panic message reporting the wrong domain
+- Fixed missing length validation of IOFBTimingRange in the max pixel clock override
+- Added logging when Radeon property accessor or connector override hooks fail to route
 
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts
