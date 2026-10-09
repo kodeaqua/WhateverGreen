@@ -296,22 +296,24 @@ IOReturn RAD::wrapAMDRadeonX6000AmdRadeonFramebufferGetAttribute(IOService *fram
 
 bool RAD::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t address, size_t size) {
 	if (kextRadeonX6000Framebuffer.loadIndex == index) {
-		KernelPatcher::RouteRequest requests[] = {
-			{"_dce_panel_cntl_hw_init", wrapDcePanelCntlHwInit, orgDcePanelCntlHwInit},
-			{"__ZN35AMDRadeonX6000_AmdRadeonFramebuffer25setAttributeForConnectionEijm", wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute, orgAMDRadeonX6000AmdRadeonFramebufferSetAttribute},
-			{"__ZN35AMDRadeonX6000_AmdRadeonFramebuffer25getAttributeForConnectionEijPm", wrapAMDRadeonX6000AmdRadeonFramebufferGetAttribute, orgAMDRadeonX6000AmdRadeonFramebufferGetAttribute},
-		};
-
-		if (!patcher.routeMultiple(index, requests, address, size, true, true))
-			SYSLOG("rad", "failed to route radeon x6000 backlight functions");
-		
-		orgDceDriverSetBacklight = reinterpret_cast<t_DceDriverSetBacklight>(patcher.solveSymbol(index, "_dce_driver_set_backlight", address, size));
-		if (patcher.getError() != KernelPatcher::Error::NoError) {
-			SYSLOG("rad", "failed to resolve _dce_driver_set_backlight");
+		// The backlight hooks only make sense together with the driver backlight function.
+		// Without it the framebuffer would advertise 'bklt' support while nothing writes to the panel.
+		orgDceDriverSetBacklight = patcher.solveSymbol<t_DceDriverSetBacklight>(index, "_dce_driver_set_backlight", address, size);
+		if (orgDceDriverSetBacklight == nullptr) {
+			SYSLOG("rad", "failed to resolve _dce_driver_set_backlight, Navi10 backlight control is unavailable on this macOS");
 			patcher.clearError();
+		} else {
+			KernelPatcher::RouteRequest requests[] = {
+				{"_dce_panel_cntl_hw_init", wrapDcePanelCntlHwInit, orgDcePanelCntlHwInit},
+				{"__ZN35AMDRadeonX6000_AmdRadeonFramebuffer25setAttributeForConnectionEijm", wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute, orgAMDRadeonX6000AmdRadeonFramebufferSetAttribute},
+				{"__ZN35AMDRadeonX6000_AmdRadeonFramebuffer25getAttributeForConnectionEijPm", wrapAMDRadeonX6000AmdRadeonFramebufferGetAttribute, orgAMDRadeonX6000AmdRadeonFramebufferGetAttribute},
+			};
+
+			if (!patcher.routeMultiple(index, requests, address, size, true, true))
+				SYSLOG("rad", "failed to route radeon x6000 backlight functions");
 		}
 	}
-	
+
 	if (kextRadeonFramebuffer.loadIndex == index) {
 		if (force24BppMode)
 			process24BitOutput(patcher, kextRadeonFramebuffer, address, size);
