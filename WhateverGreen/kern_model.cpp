@@ -619,8 +619,7 @@ static constexpr Model dev6863[] {
 };
 
 static constexpr Model dev6868[] {
-	{Model::DetectDef, 0x0000, 0x0000, 0x0000, "AMD Radeon Pro WX 8200"},
-	{Model::DetectDef, 0x1002, 0x0a0c, 0x0000, "AMD Radeon Pro WX 8200"}
+	{Model::DetectDef, 0x0000, 0x0000, 0x0000, "AMD Radeon Pro WX 8200"}
 };
 
 static constexpr Model dev687f[] {
