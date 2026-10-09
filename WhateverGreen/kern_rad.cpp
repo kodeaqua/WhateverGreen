@@ -327,20 +327,31 @@ bool RAD::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t ad
 	}
 
 	if (kextRadeonSupport.loadIndex == index) {
-		processConnectorOverrides(patcher, address, size, true);
+		// Release builds only print failures, so summarise what got hooked to make logs from users self-explanatory.
+		auto status = [](bool applicable, bool routed) { return !applicable ? "skipped" : (routed ? "ok" : "failed"); };
 
-		if (getKernelVersion() > KernelVersion::Mojave ||
-			(getKernelVersion() == KernelVersion::Mojave && getKernelMinorVersion() >= 5)) {
+		bool connectors = processConnectorOverrides(patcher, address, size, true);
+
+		bool vramApplicable = getKernelVersion() > KernelVersion::Mojave ||
+			(getKernelVersion() == KernelVersion::Mojave && getKernelMinorVersion() >= 5);
+		bool vram = false;
+		if (vramApplicable) {
 			KernelPatcher::RouteRequest request("__ZN13ATIController8TestVRAME13PCI_REG_INDEXb", doNotTestVram);
-			if (!patcher.routeMultiple(index, &request, 1, address, size))
+			vram = patcher.routeMultiple(index, &request, 1, address, size);
+			if (!vram)
 				SYSLOG("rad", "failed to route ATIController::TestVRAM");
 		}
 
+		bool agdp = false;
 		if (useCustomAgdpDecision) {
 			KernelPatcher::RouteRequest request("__ZN16AtiDeviceControl16notifyLinkChangeE31kAGDCRegisterLinkControlEvent_tmj", wrapNotifyLinkChange, orgNotifyLinkChange);
-			if (!patcher.routeMultiple(index, &request, 1, address, size))
+			agdp = patcher.routeMultiple(index, &request, 1, address, size);
+			if (!agdp)
 				SYSLOG("rad", "failed to route AtiDeviceControl::notifyLinkChange");
 		}
+
+		SYSLOG("rad", "AMDSupport hooks: connectors %s, testvram %s, agdp %s", status(true, connectors),
+			   status(vramApplicable, vram), status(useCustomAgdpDecision, agdp));
 
 		return true;
 	}
@@ -458,7 +469,8 @@ void RAD::process24BitOutput(KernelPatcher &patcher, KernelPatcher::KextInfo &in
 	}
 }
 
-void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t address, size_t size, bool modern) {
+bool RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t address, size_t size, bool modern) {
+	bool routed = false;
 	if (modern) {
 		if (getKernelVersion() >= KernelVersion::HighSierra) {
 			KernelPatcher::RouteRequest requests[] {
@@ -470,14 +482,16 @@ void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t ad
 											wrapTranslateAtomConnectorInfoV2, orgTranslateAtomConnectorInfoV2),
 				KernelPatcher::RouteRequest("__ZN13ATIController5startEP9IOService", wrapATIControllerStart, orgATIControllerStart)
 			};
-			if (!patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size))
+			routed = patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size);
+			if (!routed)
 				SYSLOG("rad", "failed to route connector override functions");
 		} else {
 			KernelPatcher::RouteRequest requests[] {
 				KernelPatcher::RouteRequest("__ZN23AtiAtomBiosDceInterface17getConnectorsInfoEP13ConnectorInfoRh", wrapGetConnectorsInfoV1, orgGetConnectorsInfoV1),
 				KernelPatcher::RouteRequest("__ZN13ATIController5startEP9IOService", wrapATIControllerStart, orgATIControllerStart),
 			};
-			if (!patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size))
+			routed = patcher.routeMultiple(kextRadeonSupport.loadIndex, requests, address, size);
+			if (!routed)
 				SYSLOG("rad", "failed to route connector override functions");
 
 			orgGetAtomObjectTableForType = reinterpret_cast<t_getAtomObjectTableForType>(patcher.solveSymbol(kextRadeonSupport.loadIndex,
@@ -492,7 +506,8 @@ void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t ad
 			KernelPatcher::RouteRequest("__ZN23AtiAtomBiosDceInterface17getConnectorsInfoEP13ConnectorInfoRh", wrapLegacyGetConnectorsInfo, orgLegacyGetConnectorsInfo),
 			KernelPatcher::RouteRequest("__ZN19AMDLegacyController5startEP9IOService", wrapLegacyATIControllerStart, orgLegacyATIControllerStart),
 		};
-		if (!patcher.routeMultiple(kextRadeonLegacySupport.loadIndex, requests, address, size))
+		routed = patcher.routeMultiple(kextRadeonLegacySupport.loadIndex, requests, address, size);
+		if (!routed)
 			SYSLOG("rad", "failed to route legacy connector override functions");
 
 		orgLegacyGetAtomObjectTableForType = patcher.solveSymbol<t_getAtomObjectTableForType>(kextRadeonLegacySupport.loadIndex,
@@ -502,6 +517,8 @@ void RAD::processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t ad
 			patcher.clearError();
 		}
 	}
+
+	return routed;
 }
 
 void RAD::processHardwareKext(KernelPatcher &patcher, size_t hwIndex, mach_vm_address_t address, size_t size) {

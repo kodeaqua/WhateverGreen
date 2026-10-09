@@ -445,8 +445,10 @@ private:
 	 *  @param address  kinfo load address
 	 *  @param size     kinfo memory size
 	 *  @param modern   legacy or normal kext
+	 *
+	 *  @return true if all connector override functions were routed
 	 */
-	void processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t address, size_t size, bool modern);
+	bool processConnectorOverrides(KernelPatcher &patcher, mach_vm_address_t address, size_t size, bool modern);
 
 	/**
 	 *  Apply hardware kext modifications (X3000~X5000)
