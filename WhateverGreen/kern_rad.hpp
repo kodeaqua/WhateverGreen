@@ -376,8 +376,9 @@ private:
 	 *  @param ctrl       ATIController service
 	 *  @param connectors autodetected controllers
 	 *  @param sz         number of autodetected controllers
+	 *  @param capacity   number of connectors the driver buffer can hold (the value of sz passed to the driver), 0 if unknown
 	 */
-	void updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gettable, IOService *ctrl, RADConnectors::Connector *connectors, uint8_t *sz);
+	void updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gettable, IOService *ctrl, RADConnectors::Connector *connectors, uint8_t *sz, uint8_t capacity = 0);
 
 	/**
 	 *  Apply various fixes to automatically detected connectors

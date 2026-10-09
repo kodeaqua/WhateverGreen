@@ -677,7 +677,7 @@ void RAD::applyPropertyFixes(IOService *service, uint32_t connectorNum) {
 	}
 }
 
-void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gettable, IOService *ctrl, RADConnectors::Connector *connectors, uint8_t *sz) {
+void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gettable, IOService *ctrl, RADConnectors::Connector *connectors, uint8_t *sz, uint8_t capacity) {
 	if (atomutils) {
 		DBGLOG("rad", "getConnectorsInfo found %u connectors", *sz);
 		RADConnectors::print(connectors, *sz);
@@ -693,11 +693,14 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 
 			uint32_t consCount;
 			if (WIOKit::getOSDataValue(ctrl, "connector-count", consCount)) {
-				if (consCount <= UINT8_MAX) {
+				// The driver passes the buffer capacity in sz, and anything above it would overflow the buffer.
+				if (consCount > UINT8_MAX) {
+					SYSLOG("rad", "getConnectorsInfo ignored too large connector-count %u", consCount);
+				} else if (capacity != 0 && consCount > capacity) {
+					SYSLOG("rad", "getConnectorsInfo ignored connector-count %u above buffer capacity %u", consCount, capacity);
+				} else {
 					*sz = static_cast<uint8_t>(consCount);
 					DBGLOG("rad", "getConnectorsInfo got size override to %u", *sz);
-				} else {
-					SYSLOG("rad", "getConnectorsInfo ignored too large connector-count %u", consCount);
 				}
 			}
 
@@ -1036,12 +1039,14 @@ OSObject *RAD::wrapGetProperty(IORegistryEntry *that, const char *aKey) {
 }
 
 uint32_t RAD::wrapGetConnectorsInfoV1(void *that, RADConnectors::Connector *connectors, uint8_t *sz) {
+	// On input the driver passes the number of connectors that fit into the buffer, on output the number written.
+	uint8_t capacity = sz ? *sz : 0;
 	uint32_t code = FunctionCast(wrapGetConnectorsInfoV1, callbackRAD->orgGetConnectorsInfoV1)(that, connectors, sz);
 	auto props = callbackRAD->currentPropProvider.get();
 
 	if (code == 0 && sz && props && *props) {
 		if (getKernelVersion() >= KernelVersion::HighSierra)
-			callbackRAD->updateConnectorsInfo(nullptr, nullptr, *props, connectors, sz);
+			callbackRAD->updateConnectorsInfo(nullptr, nullptr, *props, connectors, sz, capacity);
 		else
 			callbackRAD->updateConnectorsInfo(static_cast<void **>(that)[1], callbackRAD->orgGetAtomObjectTableForType, *props, connectors, sz);
 	} else {
@@ -1052,11 +1057,12 @@ uint32_t RAD::wrapGetConnectorsInfoV1(void *that, RADConnectors::Connector *conn
 }
 
 uint32_t RAD::wrapGetConnectorsInfoV2(void *that, RADConnectors::Connector *connectors, uint8_t *sz) {
+	uint8_t capacity = sz ? *sz : 0;
 	uint32_t code = FunctionCast(wrapGetConnectorsInfoV2, callbackRAD->orgGetConnectorsInfoV2)(that, connectors, sz);
 	auto props = callbackRAD->currentPropProvider.get();
 
 	if (code == 0 && sz && props && *props)
-		callbackRAD->updateConnectorsInfo(nullptr, nullptr, *props, connectors, sz);
+		callbackRAD->updateConnectorsInfo(nullptr, nullptr, *props, connectors, sz, capacity);
 	else
 		DBGLOG("rad", "getConnectorsInfoV2 failed %X or undefined %d", code, props == nullptr);
 
