@@ -102,10 +102,9 @@ private:
 	mach_vm_address_t orgCsfgGetPlatformBinary {};
 
 	/**
-	 * Original SetAccelProperties functions for official and web drivers
+	 * Original SetAccelProperties function (shared by official and web drivers)
 	 */
 	mach_vm_address_t orgSetAccelProperties {};
-	mach_vm_address_t orgSetAccelPropertiesWeb {};
 
 	/**
 	 *  Original NVDAStartupWeb::probe function
@@ -157,7 +156,6 @@ private:
 	 *  SetAccelProperties wrapper used to add IOVARenderer properties
 	 */
 	static void wrapSetAccelProperties(IOService *that);
-	static void wrapSetAccelPropertiesWeb(IOService *that);
 
 	/**
 	 *  NVDAStartup::probe wrapper used to force-enable web-drivers

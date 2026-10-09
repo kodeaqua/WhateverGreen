@@ -337,12 +337,6 @@ void NGFX::wrapSetAccelProperties(IOService* that) {
 	callbackNGFX->applyAcceleratorProperties(that);
 }
 
-void NGFX::wrapSetAccelPropertiesWeb(IOService* that) {
-	DBGLOG("ngfx", "nvAcceleratorParent::SetAccelProperties is called");
-	FunctionCast(wrapSetAccelProperties, callbackNGFX->orgSetAccelPropertiesWeb)(that);
-	callbackNGFX->applyAcceleratorProperties(that);
-}
-
 IOService *NGFX::wrapStartupWebProbe(IOService *that, IOService *provider, SInt32 *score) {
 	DBGLOG("ngfx", "NVDAStartupWeb::probe is called");
 
