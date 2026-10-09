@@ -1241,7 +1241,7 @@ bool RAD::doNotTestVram(IOService *ctrl, uint32_t reg, bool retryOnFail) {
 bool RAD::wrapNotifyLinkChange(void *atiDeviceControl, kAGDCRegisterLinkControlEvent_t event, void *eventData, uint32_t eventFlags) {
 	auto ret = FunctionCast(wrapNotifyLinkChange, callbackRAD->orgNotifyLinkChange)(atiDeviceControl, event, eventData, eventFlags);
 
-	if (event == kAGDCValidateDetailedTiming) {
+	if (event == kAGDCValidateDetailedTiming && eventData) {
 		auto cmd = static_cast<AGDCValidateDetailedTiming_t *>(eventData);
 		DBGLOG("rad", "AGDCValidateDetailedTiming %u -> %d (%u)", cmd->framebufferIndex, ret, cmd->modeStatus);
 		// While we have this condition below, the only actual value we get is ret = true, cmd->modeStatus = 0.
@@ -1257,6 +1257,11 @@ bool RAD::wrapNotifyLinkChange(void *atiDeviceControl, kAGDCRegisterLinkControlE
 }
 
 void RAD::updateGetHWInfo(IOService *accelVideoCtx, void *hwInfo) {
+	if (!accelVideoCtx || !hwInfo) {
+		SYSLOG("rad", "getHWInfo: invalid arguments!");
+		return;
+	}
+
 	IOService *accel, *pciDev;
 	accel = OSDynamicCast(IOService, accelVideoCtx->getParentEntry(gIOServicePlane));
 	if (accel == NULL) {
