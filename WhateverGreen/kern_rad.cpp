@@ -199,53 +199,36 @@ void RAD::processKernel(KernelPatcher &patcher, DeviceInfo *info) {
 }
 
 void RAD::updatePwmMaxBrightnessFromInternalDisplay() {
-	OSDictionary * matching = IOService::serviceMatching("AppleBacklightDisplay");
+	OSDictionary *matching = IOService::serviceMatching("AppleBacklightDisplay");
 	if (matching == nullptr) {
 		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null AppleBacklightDisplay");
 		return;
 	}
-	
+
 	OSIterator *iter = IOService::getMatchingServices(matching);
 	if (iter == nullptr) {
 		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null matching");
 		matching->release();
 		return;
 	}
-	
-	IORegistryEntry* display = OSDynamicCast(IORegistryEntry, iter->getNextObject());
+
+	// Single exit path below: the objects obtained from the iterator are only valid while it is alive.
+	auto display = OSDynamicCast(IORegistryEntry, iter->getNextObject());
 	if (display == nullptr) {
 		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null display");
-		iter->release();
-		matching->release();
-		return;
-	}
-	
-	OSDictionary* iodispparm = OSDynamicCast(OSDictionary, display->getProperty("IODisplayParameters"));
-	if (iodispparm == nullptr) {
-		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null IODisplayParameters");
-		iter->release();
-		matching->release();
-		return;
-	}
-	
-	OSDictionary* linearbri = OSDynamicCast(OSDictionary, iodispparm->getObject("linear-brightness"));
-	if (linearbri == nullptr) {
-		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null linear-brightness");
-		iter->release();
-		matching->release();
-		return;
-	}
-	
-	OSNumber* maxbri = OSDynamicCast(OSNumber, linearbri->getObject("max"));
-	if (maxbri == nullptr) {
-		DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null max");
-		iter->release();
-		matching->release();
-		return;
-	}
+	} else {
+		auto iodispparm = OSDynamicCast(OSDictionary, display->getProperty("IODisplayParameters"));
+		auto linearbri = iodispparm ? OSDynamicCast(OSDictionary, iodispparm->getObject("linear-brightness")) : nullptr;
+		auto maxbri = linearbri ? OSDynamicCast(OSNumber, linearbri->getObject("max")) : nullptr;
 
-	callbackRAD->maxPwmBacklightLvl = maxbri->unsigned32BitValue();
-	DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay get max brightness: 0x%x", callbackRAD->maxPwmBacklightLvl);
+		if (maxbri == nullptr) {
+			DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay null %s",
+				   iodispparm == nullptr ? "IODisplayParameters" : (linearbri == nullptr ? "linear-brightness" : "max"));
+		} else {
+			callbackRAD->maxPwmBacklightLvl = maxbri->unsigned32BitValue();
+			DBGLOG("rad", "updatePwmMaxBrightnessFromInternalDisplay get max brightness: 0x%x", callbackRAD->maxPwmBacklightLvl);
+		}
+	}
 
 	iter->release();
 	matching->release();
