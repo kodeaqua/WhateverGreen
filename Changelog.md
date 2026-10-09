@@ -15,6 +15,9 @@
 - Fixed an infinite loop when parsing zero-sized atom records while detecting the connector sense id
 - Fixed unsafe key comparison in the Radeon `setProperty` hook
 - Fixed integer overflow and coarse 1% steps in Navi10 PWM backlight scaling
+- Fixed a possible null call when autocorrecting Radeon connectors if the atom object table function was not found
+- Fixed spoofing the codec PID from uninitialised hardware info when the original `getHWInfo` failed
+- Added logging when more Radeon hooks (TestVRAM, link change, project lookup, accelerator config, codec info) fail to route
 
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts

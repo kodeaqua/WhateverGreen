@@ -262,8 +262,10 @@ private:
 	template <size_t Index>
 	static IOReturn populateGetHWInfo(IOService *accelVideoCtx, void *hwInfo) {
 		if (callbackRAD->orgGetHWInfo[Index]) {
-			int ret = FunctionCast(populateGetHWInfo<Index>, callbackRAD->orgGetHWInfo[Index])(accelVideoCtx, hwInfo);
-			callbackRAD->updateGetHWInfo(accelVideoCtx, hwInfo);
+			IOReturn ret = FunctionCast(populateGetHWInfo<Index>, callbackRAD->orgGetHWInfo[Index])(accelVideoCtx, hwInfo);
+			// Do not patch the hardware info if the original function failed to fill it.
+			if (ret == kIOReturnSuccess)
+				callbackRAD->updateGetHWInfo(accelVideoCtx, hwInfo);
 			return ret;
 		} else {
 			SYSLOG("rad", "populateGetHWInfo invalid use for %lu", Index);

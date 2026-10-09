@@ -330,12 +330,14 @@ bool RAD::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t ad
 		if (getKernelVersion() > KernelVersion::Mojave ||
 			(getKernelVersion() == KernelVersion::Mojave && getKernelMinorVersion() >= 5)) {
 			KernelPatcher::RouteRequest request("__ZN13ATIController8TestVRAME13PCI_REG_INDEXb", doNotTestVram);
-			patcher.routeMultiple(index, &request, 1, address, size);
+			if (!patcher.routeMultiple(index, &request, 1, address, size))
+				SYSLOG("rad", "failed to route ATIController::TestVRAM");
 		}
 
 		if (useCustomAgdpDecision) {
 			KernelPatcher::RouteRequest request("__ZN16AtiDeviceControl16notifyLinkChangeE31kAGDCRegisterLinkControlEvent_tmj", wrapNotifyLinkChange, orgNotifyLinkChange);
-			patcher.routeMultiple(index, &request, 1, address, size);
+			if (!patcher.routeMultiple(index, &request, 1, address, size))
+				SYSLOG("rad", "failed to route AtiDeviceControl::notifyLinkChange");
 		}
 
 		return true;
@@ -348,7 +350,8 @@ bool RAD::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t ad
 
 	if (kextPolarisController.loadIndex == index) {
 		KernelPatcher::RouteRequest request("__ZN17AMD9500Controller23findProjectByPartNumberEP20ControllerProperties", findProjectByPartNumber);
-		patcher.routeMultiple(index, &request, 1, address, size);
+		if (!patcher.routeMultiple(index, &request, 1, address, size))
+			SYSLOG("rad", "failed to route AMD9500Controller::findProjectByPartNumber");
 	}
 
 	for (size_t i = 0; i < maxHardwareKexts; i++) {
@@ -533,7 +536,8 @@ void RAD::processHardwareKext(KernelPatcher &patcher, size_t hwIndex, mach_vm_ad
 	// Also fix GVA properties for X4000.
 	if (fixConfigName || hwIndex == IndexRadeonHardwareX4000) {
 		KernelPatcher::RouteRequest request(populateAccelConfigProcNames[hwIndex], wrapPopulateAccelConfig[hwIndex], orgPopulateAccelConfig[hwIndex]);
-		patcher.routeMultiple(hardware.loadIndex, &request, 1, address, size);
+		if (!patcher.routeMultiple(hardware.loadIndex, &request, 1, address, size))
+			SYSLOG("rad", "failed to route populateAccelConfig for hardware kext %lu", static_cast<unsigned long>(hwIndex));
 	}
 
 	// Enforce OpenGL support if requested
@@ -558,7 +562,8 @@ void RAD::processHardwareKext(KernelPatcher &patcher, size_t hwIndex, mach_vm_ad
 	// Patch AppleGVA support for non-supported models
 	if (forceCodecInfo && getHWInfoProcNames[hwIndex] != nullptr) {
 		KernelPatcher::RouteRequest request(getHWInfoProcNames[hwIndex], wrapGetHWInfo[hwIndex], orgGetHWInfo[hwIndex]);
-		patcher.routeMultiple(hardware.loadIndex, &request, 1, address, size);
+		if (!patcher.routeMultiple(hardware.loadIndex, &request, 1, address, size))
+			SYSLOG("rad", "failed to route getHWInfo for hardware kext %lu", static_cast<unsigned long>(hwIndex));
 	}
 }
 
@@ -707,7 +712,7 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 			DBGLOG("rad", "getConnectorsInfo conoverrides have invalid type");
 		}
 	} else {
-		if (atomutils) {
+		if (atomutils && gettable) {
 			DBGLOG("rad", "getConnectorsInfo attempting to autofix connectors");
 			uint8_t sHeader = 0, displayPathNum = 0, connectorObjectNum = 0;
 			auto commonTable = static_cast<uint8_t *>(gettable(atomutils, AtomObjectTableType::Common, &sHeader));
