@@ -665,6 +665,7 @@
 					"-Wno-unknown-warning-option",
 					"-Wno-ossharedptr-misuse",
 					"-Wno-vla",
+					"-Wno-c99-designator",
 				);
 				OTHER_LDFLAGS = "-static";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(MODULE_NAME)";
@@ -715,6 +716,7 @@
 					"-Wno-unknown-warning-option",
 					"-Wno-ossharedptr-misuse",
 					"-Wno-vla",
+					"-Wno-c99-designator",
 				);
 				OTHER_LDFLAGS = "-static";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(MODULE_NAME)";
@@ -858,6 +860,7 @@
 					"-Wno-unknown-warning-option",
 					"-Wno-ossharedptr-misuse",
 					"-Wno-vla",
+					"-Wno-c99-designator",
 				);
 				OTHER_LDFLAGS = "-static";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(MODULE_NAME)";
