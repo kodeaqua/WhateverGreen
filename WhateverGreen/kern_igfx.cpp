@@ -1368,7 +1368,7 @@ void IGFX::loadIGScheduler4Patches(KernelPatcher &patcher, size_t index, mach_vm
 			uint8_t sizeReg[] {0x10, 0xC3, 0x00, 0x00};
 			auto pos    = reinterpret_cast<uint8_t *>(loadGuC);
 			auto endPos = pos + PAGE_SIZE;
-			while (memcmp(pos, sizeReg, sizeof(sizeReg)) != 0 && pos < endPos)
+			while (pos < endPos && memcmp(pos, sizeReg, sizeof(sizeReg)) != 0)
 				pos++;
 
 			// Verify and store the size pointer
@@ -1385,8 +1385,8 @@ void IGFX::loadIGScheduler4Patches(KernelPatcher &patcher, size_t index, mach_vm
 			}
 
 			if (firmwareSizePointer) {
-				orgLoadGuCBinary = patcher.routeFunction(loadGuC, reinterpret_cast<mach_vm_address_t>(wrapLoadGuCBinary), true);
-				if (patcher.getError() == KernelPatcher::Error::NoError) {
+				KernelPatcher::RouteRequest loadGuCRequest {"__ZN13IGHardwareGuC13loadGuCBinaryEv", wrapLoadGuCBinary, orgLoadGuCBinary};
+				if (patcher.routeMultiple(index, &loadGuCRequest, 1, address, size)) {
 					DBGLOG("igfx", "routed IGHardwareGuC::loadGuCBinary");
 
 					KernelPatcher::RouteRequest requests[] {
