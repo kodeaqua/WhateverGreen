@@ -10,6 +10,7 @@
 - Replaced deprecated `routeFunction` for `IGHardwareGuC::loadGuCBinary`
 - Fixed ForceWake timeout panic message reporting the wrong domain
 - Fixed missing length validation of IOFBTimingRange in the max pixel clock override
+- Added logging when Radeon property accessor or connector override hooks fail to route
 
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts
