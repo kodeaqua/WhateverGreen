@@ -103,6 +103,9 @@ IOReturn LSPCON::setMode(Mode newMode) {
 		// Guard: Read the current effective mode
 		if (retVal != kIOReturnSuccess) {
 			SYSLOG("igfx", "SC: LSPCON::setMode() Error: [FB%d] Failed to read the new effective mode. RV = 0x%llx.", index, (unsigned long long)retVal);
+			// Still consume the timeout budget; otherwise a persistent read failure loops forever
+			timeout -= 20;
+			IOSleep(20);
 			continue;
 		}
 		// Guard: The new mode is effective now
