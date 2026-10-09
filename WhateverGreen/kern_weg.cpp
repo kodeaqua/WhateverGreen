@@ -497,7 +497,8 @@ void WEG::processExternalProperties(IORegistryEntry *device, DeviceInfo *info, u
 	if (wantSlot && currentExternalSlotIndex <= MaxExternalSlotIndex && !device->getProperty("AAPL,slot-name")) {
 		char name[16];
 		snprintf(name, sizeof(name), "Slot-%u", currentExternalSlotIndex++);
-		device->setProperty("AAPL,slot-name", name, sizeof("Slot-1"));
+		// Use the real length, as indexes above 9 make the name longer than "Slot-1" and would lose the terminator.
+		device->setProperty("AAPL,slot-name", name, static_cast<unsigned>(strlen(name) + 1));
 	}
 
 	// Set the autodetected AMD GPU name here, it will later be handled by RAD to not get overridden.
