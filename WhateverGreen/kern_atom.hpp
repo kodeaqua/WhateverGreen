@@ -170,6 +170,9 @@ inline uint8_t getSenseID(uint8_t *record) {
 			} else if (h->ucRecordType == AtomRecordType::Max) {
 				return 0;
 			}
+			// A zero-sized record would make this loop spin forever on malformed data.
+			if (h->ucRecordSize == 0)
+				return 0;
 			record += h->ucRecordSize;
 		}
 	}

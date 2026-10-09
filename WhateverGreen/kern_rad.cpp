@@ -248,25 +248,24 @@ IOReturn RAD::wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute(IOService *fram
 	}
 	
 	if (callbackRAD->maxPwmBacklightLvl == 0) {
-		DBGLOG("igfx", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute zero maxPwmBacklightLvl");
+		DBGLOG("rad", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute zero maxPwmBacklightLvl");
 		return 0;
 	}
 	
 	if (callbackRAD->panelCntlPtr == nullptr) {
-		DBGLOG("igfx", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute null panel cntl");
+		DBGLOG("rad", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute null panel cntl");
 		return 0;
 	}
 	
 	if (callbackRAD->orgDceDriverSetBacklight == nullptr) {
-		DBGLOG("igfx", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute null orgDcLinkSetBacklightLevel");
+		DBGLOG("rad", "wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute null orgDceDriverSetBacklight");
 		return 0;
 	}
 	
 	// set the backlight of AMD navi10 driver
 	callbackRAD->curPwmBacklightLvl = (uint32_t)value;
-	uint32_t btlper = callbackRAD->curPwmBacklightLvl * 100 / callbackRAD->maxPwmBacklightLvl;
 	uint32_t pwmval = 0;
-	if (btlper >= 100) {
+	if (callbackRAD->curPwmBacklightLvl >= callbackRAD->maxPwmBacklightLvl) {
 		// This is from the dmcu_set_backlight_level function of Linux source
 		// ...
 		// if (backlight_pwm_u16_16 & 0x10000)
@@ -277,7 +276,8 @@ IOReturn RAD::wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute(IOService *fram
 		// The max brightness should have 0x10000 bit set
 		pwmval = 0x1FF00;
 	} else {
-		pwmval = ((btlper * 0xFF) / 100) << 8U;
+		// Scale in 64 bits to avoid overflow and keep the full 8-bit resolution instead of 1% steps.
+		pwmval = static_cast<uint32_t>(static_cast<uint64_t>(callbackRAD->curPwmBacklightLvl) * 0xFF / callbackRAD->maxPwmBacklightLvl) << 8U;
 	}
 
 	callbackRAD->orgDceDriverSetBacklight(callbackRAD->panelCntlPtr, pwmval);
@@ -286,7 +286,7 @@ IOReturn RAD::wrapAMDRadeonX6000AmdRadeonFramebufferSetAttribute(IOService *fram
 
 IOReturn RAD::wrapAMDRadeonX6000AmdRadeonFramebufferGetAttribute(IOService *framebuffer, IOIndex connectIndex, IOSelect attribute, uintptr_t * value) {
 	IOReturn ret = FunctionCast(wrapAMDRadeonX6000AmdRadeonFramebufferGetAttribute, callbackRAD->orgAMDRadeonX6000AmdRadeonFramebufferGetAttribute)(framebuffer, connectIndex, attribute, value);
-	if (attribute == (UInt32)'bklt') {
+	if (attribute == (UInt32)'bklt' && value) {
 		// enable the backlight feature of AMD navi10 driver
 		*value = callbackRAD->curPwmBacklightLvl;
 		ret = 0;
@@ -303,11 +303,11 @@ bool RAD::processKext(KernelPatcher &patcher, size_t index, mach_vm_address_t ad
 		};
 
 		if (!patcher.routeMultiple(index, requests, address, size, true, true))
-			SYSLOG("igfx", "Failed to route redeon x6000 gpu tracing.");
+			SYSLOG("rad", "failed to route radeon x6000 backlight functions");
 		
-		orgDceDriverSetBacklight = reinterpret_cast<t_DceDriverSetBacklight>(patcher.solveSymbol(index, "_dce_driver_set_backlight"));
+		orgDceDriverSetBacklight = reinterpret_cast<t_DceDriverSetBacklight>(patcher.solveSymbol(index, "_dce_driver_set_backlight", address, size));
 		if (patcher.getError() != KernelPatcher::Error::NoError) {
-			SYSLOG("igfx", "failed to resolve _dce_driver_set_backlight");
+			SYSLOG("rad", "failed to resolve _dce_driver_set_backlight");
 			patcher.clearError();
 		}
 	}
@@ -730,7 +730,12 @@ void RAD::updateConnectorsInfo(void *atomutils, t_getAtomObjectTableForType gett
 		auto priData = OSDynamicCast(OSData, ctrl->getProperty("connector-priority"));
 		if (priData) {
 			senseList = static_cast<const uint8_t *>(priData->getBytesNoCopy());
-			senseNum = static_cast<uint8_t>(priData->getLength());
+			auto priLen = priData->getLength();
+			if (priLen > UINT8_MAX) {
+				SYSLOG("rad", "getConnectorInfo truncating connector-priority from %u to %u senses", priLen, UINT8_MAX);
+				priLen = UINT8_MAX;
+			}
+			senseNum = static_cast<uint8_t>(priLen);
 			DBGLOG("rad", "getConnectorInfo found %u senses in connector-priority", senseNum);
 			reprioritiseConnectors(senseList, senseNum, connectors, *sz);
 		} else {
@@ -824,13 +829,14 @@ void RAD::reprioritiseConnectors(const uint8_t *senseList, uint8_t senseNum, RAD
 
 	bool isModern = RADConnectors::modern();
 	uint16_t priCount = 1;
+	// The loop counter must be wider than uint8_t, as senseNum + typeNum + 1 may exceed 255.
 	// Automatically detected connectors have equal priority (0), which often results in black screen
 	// This allows to change this firstly by user-defined list, then by type list.
 	//TODO: priority is ignored for 5xxx and 6xxx GPUs, should we manually reorder items?
-	for (uint8_t i = 0; i < senseNum + typeNum + 1; i++) {
+	for (uint32_t i = 0; i < static_cast<uint32_t>(senseNum) + typeNum + 1; i++) {
 		for (uint8_t j = 0; j < sz; j++) {
 			auto reorder = [&](auto &con) {
-				if (i == senseNum + typeNum) {
+				if (i == static_cast<uint32_t>(senseNum) + typeNum) {
 					if (con.priority == 0)
 						con.priority = priCount++;
 				} else if (i < senseNum) {
@@ -973,7 +979,7 @@ void RAD::updateAccelConfig(size_t hwIndex, IOService *accelService, const char 
 }
 
 bool RAD::wrapSetProperty(IORegistryEntry *that, const char *aKey, void *bytes, unsigned length) {
-	if (length > 10 && aKey && reinterpret_cast<const uint32_t *>(aKey)[0] == 'edom' && reinterpret_cast<const uint16_t *>(aKey)[2] == 'l') {
+	if (length > 10 && bytes && aKey && aKey[0] == 'm' && !strcmp(aKey, "model")) {
 		DBGLOG("rad", "SetProperty caught model %u (%.*s)", length, length, static_cast<char *>(bytes));
 		if (*static_cast<uint32_t *>(bytes) == ' DMA' || *static_cast<uint32_t *>(bytes) == ' ITA' || *static_cast<uint32_t *>(bytes) == 'edaR') {
 			if (FunctionCast(wrapGetProperty, callbackRAD->orgGetProperty)(that, aKey)) {
@@ -1071,7 +1077,7 @@ uint32_t RAD::wrapTranslateAtomConnectorInfoV1(void *that, RADConnectors::AtomCo
 		RADConnectors::print(connector, 1);
 
 		uint8_t sense = getSenseID(info->i2cRecord);
-		if (sense) {
+		if (sense && info->hpdRecord) {
 			DBGLOG("rad", "translateAtomConnectorInfoV1 got sense id %02X", sense);
 
 			// We need to extract usGraphicObjIds from info->hpdRecord, which is of type ATOM_SRC_DST_TABLE_FOR_ONE_OBJECT:

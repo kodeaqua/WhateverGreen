@@ -11,6 +11,10 @@
 - Fixed ForceWake timeout panic message reporting the wrong domain
 - Fixed missing length validation of IOFBTimingRange in the max pixel clock override
 - Added logging when Radeon property accessor or connector override hooks fail to route
+- Fixed an infinite loop in Radeon connector prioritisation with a `connector-priority` of 250 or more entries
+- Fixed an infinite loop when parsing zero-sized atom records while detecting the connector sense id
+- Fixed unsafe key comparison in the Radeon `setProperty` hook
+- Fixed integer overflow and coarse 1% steps in Navi10 PWM backlight scaling
 
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts
