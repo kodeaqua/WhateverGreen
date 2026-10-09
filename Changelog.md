@@ -9,6 +9,7 @@
 - Improved `getProperty` hook performance by checking the property name before querying the registry
 - Replaced deprecated `routeFunction` for `IGHardwareGuC::loadGuCBinary`
 - Fixed ForceWake timeout panic message reporting the wrong domain
+- Fixed missing length validation of IOFBTimingRange in the max pixel clock override
 
 #### v1.7.1
 - Added support for routing IOReg getProperty in other kexts
