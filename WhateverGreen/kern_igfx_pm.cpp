@@ -100,7 +100,7 @@ constexpr uint32_t ackForDom(unsigned d) {
 	return 0;
 }
 
-constexpr const char* const strForDom(unsigned d) {
+constexpr const char* strForDom(unsigned d) {
 	if (d == DOM_RENDER)
 		return "Render";
 	if (d == DOM_MEDIA)

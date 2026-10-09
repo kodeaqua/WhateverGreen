@@ -68,7 +68,7 @@ struct BrightnessRequest {
 	 *  Create a brightness request
 	 */
 	BrightnessRequest(uint32_t id, void *controller, uint32_t address, uint32_t target, uint32_t mask = 0xFFFFFFFF) :
-		id(id), controller(controller), address(address), target(target), mask(mask) {}
+		controller(controller), address(address), target(target), mask(mask), id(id) {}
 	
 	/**
 	 *  Get the current brightness level
